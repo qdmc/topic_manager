@@ -1,5 +1,7 @@
 package topic_tree
 
+import "fmt"
+
 type SubscribeMode uint8
 
 const (
@@ -8,14 +10,28 @@ const (
 	MultilayerSubscribe SubscribeMode = 2 // 多层通配符—-“#”
 )
 
-func newTopic(parent *topic, target string, ids ...int64) *topic {
+func newTopic(parent *topic, title string, target string, ids ...int64) *topic {
 	t := &topic{
 		parent:    parent,
-		target:    target,
+		title:     title,
+		targets:   nil,
+		level:     0,
 		children:  map[string]*topic{},
 		commonIds: map[int64]struct{}{},
-		monoIds:   map[int64]struct{}{},
-		multiIds:  map[int64]struct{}{},
+		monoIds:   map[string]map[int64]struct{}{},
+		multiIds:  map[string]map[int64]struct{}{},
+	}
+	if parent != nil {
+		t.level = parent.level + 1
+		if parent.multiIds != nil {
+			if idMap, ok := parent.multiIds["#"]; ok {
+				t.monoIds["#"] = idMap
+			}
+			key := fmt.Sprintf("#/%s", target)
+			if idMap, ok := parent.multiIds[key]; ok {
+				t.monoIds[key] = idMap
+			}
+		}
 	}
 	if ids != nil && len(ids) > 0 {
 		for _, id := range ids {
@@ -26,12 +42,14 @@ func newTopic(parent *topic, target string, ids ...int64) *topic {
 }
 
 type topic struct {
-	parent    *topic             // 上一级topic
-	target    string             // 标识
-	children  map[string]*topic  // 子topic
-	commonIds map[int64]struct{} // 标准订阅
-	monoIds   map[int64]struct{} // 单层通(+)订阅
-	multiIds  map[int64]struct{} // 多层通(#)订阅
+	parent    *topic                        // 上一级topic
+	title     string                        // 标题
+	targets   []string                      // 标识
+	level     uint8                         // 级别
+	children  map[string]*topic             // 子topic
+	commonIds map[int64]struct{}            // 标准订阅
+	monoIds   map[string]map[int64]struct{} // 单层通(+)订阅
+	multiIds  map[string]map[int64]struct{} // 多层通(#)订阅
 }
 
 func (t *topic) UnSubscribe(clientId int64, mod SubscribeMode) {
@@ -53,26 +71,30 @@ func (t *topic) UnSubscribe(clientId int64, mod SubscribeMode) {
 		}
 	}
 }
-func (t *topic) Subscribe(clientId int64, mod SubscribeMode) {
+func (t *topic) SubscribeMultilayer(clientId int64, multiStr string) {
+	if t.multiIds == nil {
+		t.multiIds = map[string]map[int64]struct{}{}
+	}
+	if _, ok := t.multiIds[multiStr]; !ok {
+		t.multiIds[multiStr] = map[int64]struct{}{}
+	}
+	t.multiIds[multiStr][clientId] = struct{}{}
+}
+func (t *topic) SubscribeMonolayer(clientId int64, monoStr string) {
+	if t.monoIds == nil {
+		t.monoIds = map[int64]string{}
+	}
+	t.monoIds[clientId] = monoStr
+}
+func (t *topic) SubscribeCommonly(clientId int64) {
 	//t.mu.Lock()
 	//defer t.mu.Unlock()
-	switch mod {
-	case CommonlySubscribe:
-		if t.commonIds == nil {
-			t.commonIds = map[int64]struct{}{}
-		}
-		t.commonIds[clientId] = struct{}{}
-	case MonolayerSubscribe:
-		if t.monoIds == nil {
-			t.monoIds = map[int64]struct{}{}
-		}
-		t.monoIds[clientId] = struct{}{}
-	case MultilayerSubscribe:
-		if t.multiIds == nil {
-			t.multiIds = map[int64]struct{}{}
-		}
-		t.multiIds[clientId] = struct{}{}
+	if t.commonIds == nil {
+		t.commonIds = map[int64]struct{}{}
 	}
+	t.commonIds[clientId] = struct{}{}
+	return
+
 }
 
 func (t *topic) GetIdsWithMode(mod SubscribeMode) map[int64]struct{} {
@@ -87,9 +109,11 @@ func (t *topic) GetIdsWithMode(mod SubscribeMode) map[int64]struct{} {
 		m = t.commonIds
 	case MonolayerSubscribe:
 		if t.monoIds == nil {
-			t.monoIds = map[int64]struct{}{}
+			t.monoIds = map[int64]string{}
+		} else {
+
 		}
-		m = t.monoIds
+
 	case MultilayerSubscribe:
 		if t.multiIds == nil {
 			t.multiIds = map[int64]struct{}{}
