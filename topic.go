@@ -10,6 +10,8 @@ type TopicInterface interface {
 	AddClient(id ClientId)             // 增加一个客户端
 	RemoveClient(id ClientId) int      // 主题删除一个客户端,返加剩下的客户端总数
 	GetClients() map[ClientId]struct{} // 返回客户端列表
+	GetLevel() SubscribeLevel
+	SetLevel(l SubscribeLevel)
 }
 
 // commonTopic 普通主题结构
@@ -19,6 +21,7 @@ type defaultTopic struct {
 	match     *regexp.Regexp
 	isMatch   bool
 	clientMap map[ClientId]struct{}
+	level     SubscribeLevel
 }
 
 func newCommonTopic(f *titleFormat) *defaultTopic {
@@ -27,10 +30,19 @@ func newCommonTopic(f *titleFormat) *defaultTopic {
 		targets:   f.targets,
 		isMatch:   f.isMatch,
 		match:     f.match,
+		level:     SubscribeQos0,
 		clientMap: map[ClientId]struct{}{},
 	}
 }
+func (t *defaultTopic) SetLevel(l SubscribeLevel) {
+	if l == SubscribeQos0 || l == SubscribeQos2 || l == SubscribeQos1 {
+		t.level = l
+	}
+}
 
+func (t *defaultTopic) GetLevel() SubscribeLevel {
+	return t.level
+}
 func (t *defaultTopic) MatchTitle(title string) bool {
 	if t.isMatch {
 		return t.match.MatchString(title)

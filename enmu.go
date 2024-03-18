@@ -1,12 +1,12 @@
 package topic_manager
 
-type SubscribeResult = uint8
+type SubscribeLevel = uint8
 
 const (
-	SubscribeQos0   SubscribeResult = 0x00
-	SubscribeQos1   SubscribeResult = 0x01
-	SubscribeQos2   SubscribeResult = 0x02
-	SubscribeFailed SubscribeResult = 0x80
+	SubscribeQos0   SubscribeLevel = 0x00
+	SubscribeQos1   SubscribeLevel = 0x01
+	SubscribeQos2   SubscribeLevel = 0x02
+	SubscribeFailed SubscribeLevel = 0x80
 )
 
 type ClientId = int64
