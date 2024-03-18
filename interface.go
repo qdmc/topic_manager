@@ -1,4 +1,4 @@
-package topic_tree
+package topic_manager
 
 type TopicTreeInterface interface {
 	Subscribe(topic string, clientId int64) bool

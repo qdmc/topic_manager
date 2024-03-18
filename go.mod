@@ -1,3 +1,3 @@
-module gitee.com/qdmc/topic_tree
+module gitee.com/qdmc/topic_manager
 
 go 1.16
