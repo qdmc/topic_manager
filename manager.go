@@ -3,6 +3,7 @@ package topic_manager
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 )
 
@@ -25,10 +26,10 @@ type TopicManagerInterface interface {
 	ClientSubscribe(id ClientId, titles []string, levels ...SubscribeLevel) []SubscribeResultItem // 客户端订阅
 	ClientUnSubscribe(id ClientId, titles []string) ([]UnSubscribeResultItem, error)              // 客户端取消订阅
 	ClientUnSubscribeAll(id ClientId)                                                             // 客户端取消所有订阅
-	GetClientSubscribe() []TopicInterface                                                         // 客户端订阅列表
+	GetClientSubscribe(id ClientId, start, end int) (int, []TopicInterface)                       // 客户端订阅列表
 	GetPublishClientIds(title string, isCheckTopicExists ...bool) (map[ClientId]struct{}, error)  // 消息发布受众列表,isCheckTopicExists:是否校验topic是否存在
-	GetPlainTopics() []TopicInterface                                                             // 普通topic列表
-	GetMatchTopics() []TopicInterface                                                             // 匹配topic列表
+	GetPlainTopics(start, end int) (int, []TopicInterface)                                        // 普通topic列表
+	GetMatchTopics(start, end int) (int, []TopicInterface)                                        // 匹配topic列表
 	SetSubscribeHandle(SubscribeHandle)
 }
 
@@ -170,9 +171,28 @@ func (m *defaultTopicManager) ClientUnSubscribeAll(id ClientId) {
 	}
 }
 
-func (m *defaultTopicManager) GetClientSubscribe() []TopicInterface {
-	//TODO implement me
-	panic("implement me")
+func (m *defaultTopicManager) GetClientSubscribe(id ClientId, start, end int) (int, []TopicInterface) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var topics Topics
+	var length int
+	if client, ok := m.clientMap[id]; ok {
+		length = len(client.topicMap)
+		if length > 0 {
+			for _, topic := range client.topicMap {
+				topics = append(topics, topic)
+				sort.Sort(topics)
+				var list []TopicInterface
+				for index, t := range topics {
+					if index >= start && index < end {
+						list = append(list, t)
+					}
+				}
+				return length, list
+			}
+		}
+	}
+	return length, topics
 }
 
 func (m *defaultTopicManager) GetPublishClientIds(publishTitle string, isCheckTopicExists ...bool) (map[ClientId]struct{}, error) {
@@ -204,14 +224,48 @@ func (m *defaultTopicManager) GetPublishClientIds(publishTitle string, isCheckTo
 	return resMap, nil
 }
 
-func (m *defaultTopicManager) GetPlainTopics() []TopicInterface {
-	//TODO implement me
-	panic("implement me")
+func (m *defaultTopicManager) GetPlainTopics(start, end int) (int, []TopicInterface) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var topics Topics
+	var length int
+	length = len(m.plainMap)
+	if length > 0 {
+		for _, topic := range m.plainMap {
+			topics = append(topics, topic)
+			sort.Sort(topics)
+			var list []TopicInterface
+			for index, t := range topics {
+				if index >= start && index < end {
+					list = append(list, t)
+				}
+			}
+			return length, list
+		}
+	}
+	return length, topics
 }
 
-func (m *defaultTopicManager) GetMatchTopics() []TopicInterface {
-	//TODO implement me
-	panic("implement me")
+func (m *defaultTopicManager) GetMatchTopics(start, end int) (int, []TopicInterface) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var topics Topics
+	var length int
+	length = len(m.matchMap)
+	if length > 0 {
+		for _, topic := range m.matchMap {
+			topics = append(topics, topic)
+			sort.Sort(topics)
+			var list []TopicInterface
+			for index, t := range topics {
+				if index >= start && index < end {
+					list = append(list, t)
+				}
+			}
+			return length, list
+		}
+	}
+	return length, topics
 }
 
 func (m *defaultTopicManager) doNewTopicOnce(id ClientId, newTopic TopicInterface) (TopicInterface, bool) {

@@ -79,3 +79,17 @@ func (t *defaultTopic) RemoveClient(id ClientId) int {
 	delete(t.clientMap, id)
 	return len(t.clientMap)
 }
+
+type Topics []TopicInterface
+
+func (ts Topics) Len() int {
+	return len(ts)
+}
+
+func (ts Topics) Less(i, j int) bool {
+	return ts[i].Title() > ts[j].Title()
+}
+
+func (ts Topics) Swap(i, j int) {
+	ts[i], ts[j] = ts[j], ts[i]
+}
