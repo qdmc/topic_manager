@@ -1,5 +1,6 @@
 package topic_manager
 
+// SubscribeLevel    订阅级别及订阅返回
 type SubscribeLevel = uint8
 
 const (

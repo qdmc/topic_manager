@@ -265,7 +265,7 @@ func (m *defaultTopicManager) GetPublishClientIds(publishTitle string, isCheckTo
 func (m *defaultTopicManager) GetPlainTopics(start, end int) (int, []TopicInterface) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	var topics Topics
+	var topics topics
 	var length int
 	length = len(m.plainMap)
 	if length > 0 {
@@ -287,7 +287,7 @@ func (m *defaultTopicManager) GetPlainTopics(start, end int) (int, []TopicInterf
 func (m *defaultTopicManager) GetMatchTopics(start, end int) (int, []TopicInterface) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	var topics Topics
+	var topics topics
 	var length int
 	length = len(m.matchMap)
 	if length > 0 {

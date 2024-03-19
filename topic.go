@@ -29,7 +29,7 @@ type defaultTopic struct {
 	createNano int64
 }
 
-func newCommonTopic(f *titleFormat) *defaultTopic {
+func newCommonTopic(f *titleFormat) TopicInterface {
 	return &defaultTopic{
 		title:      f.title,
 		targets:    f.targets,
@@ -90,16 +90,16 @@ func (t *defaultTopic) RemoveClient(id ClientId) int {
 	return len(t.clientMap)
 }
 
-type Topics []TopicInterface
+type topics []TopicInterface
 
-func (ts Topics) Len() int {
+func (ts topics) Len() int {
 	return len(ts)
 }
 
-func (ts Topics) Less(i, j int) bool {
+func (ts topics) Less(i, j int) bool {
 	return ts[i].Title() > ts[j].Title()
 }
 
-func (ts Topics) Swap(i, j int) {
+func (ts topics) Swap(i, j int) {
 	ts[i], ts[j] = ts[j], ts[i]
 }
