@@ -7,8 +7,10 @@ import (
 	"sync"
 )
 
+// SubscribeHandle    校验客户端订阅Handle
 type SubscribeHandle func(title string, id ClientId) error
 
+// SubscribeResultItem  单个订阅结果
 type SubscribeResultItem struct {
 	SubscribeTitle string
 	TopicTitle     string
@@ -16,6 +18,7 @@ type SubscribeResultItem struct {
 	Err            error
 }
 
+// UnSubscribeResultItem  单个取消订阅结果
 type UnSubscribeResultItem struct {
 	Title string
 	Err   error
@@ -34,21 +37,23 @@ type TopicManagerInterface interface {
 	GetOnceTopicSubscribes(title string, start, end int) (int, []SubscribeItem, error)            // 获取一个topic的订阅列表
 }
 
+// SubscribeItem   订阅列表单项
 type SubscribeItem struct {
 	Id       ClientId
 	Title    string
 	TimeNano int64
 }
 
-type ClientItem struct {
+type clientItem struct {
 	id       ClientId
 	topicMap map[string]TopicInterface
 }
 
+// NewTopicManager      生成主题管理器
 func NewTopicManager() TopicManagerInterface {
 	return &defaultTopicManager{
 		mu:        sync.RWMutex{},
-		clientMap: map[ClientId]ClientItem{},
+		clientMap: map[ClientId]clientItem{},
 		plainMap:  map[string]TopicInterface{},
 		matchMap:  map[string]TopicInterface{},
 		handle: func(title string, id ClientId) error {
@@ -59,7 +64,7 @@ func NewTopicManager() TopicManagerInterface {
 
 type defaultTopicManager struct {
 	mu        sync.RWMutex
-	clientMap map[ClientId]ClientItem // 客户端map
+	clientMap map[ClientId]clientItem // 客户端map
 	plainMap  map[string]TopicInterface
 	matchMap  map[string]TopicInterface
 	handle    SubscribeHandle
@@ -116,7 +121,7 @@ func (m *defaultTopicManager) ClientSubscribe(id ClientId, titles []string, leve
 				client.topicMap[title] = topic
 			}
 		} else {
-			client = ClientItem{
+			client = clientItem{
 				id:       id,
 				topicMap: map[string]TopicInterface{},
 			}
