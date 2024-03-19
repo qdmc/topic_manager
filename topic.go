@@ -55,8 +55,9 @@ func (t *defaultTopic) GetLevel() SubscribeLevel {
 func (t *defaultTopic) MatchTitle(title string) bool {
 	if t.isMatch {
 		return t.match.MatchString(title)
+	} else {
+		return t.title == title
 	}
-	return false
 }
 
 func (t *defaultTopic) IsMatch() bool {

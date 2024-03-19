@@ -105,7 +105,6 @@ func (m *defaultTopicManager) ClientSubscribe(id ClientId, titles []string, leve
 		var isAdd bool
 		// 处理clientId添加到topic,topic添加到列表
 		topic, isAdd = m.doNewTopicOnce(id, topic)
-
 		if isAdd {
 			topic.SetLevel(level)
 		} else {
@@ -165,6 +164,9 @@ func (m *defaultTopicManager) ClientUnSubscribe(id ClientId, titles []string) ([
 		}
 		list = append(list, resItem)
 	}
+	if len(item.topicMap) == 0 {
+
+	}
 	return list, nil
 }
 
@@ -173,14 +175,13 @@ func (m *defaultTopicManager) ClientUnSubscribeAll(id ClientId) {
 	defer m.mu.Unlock()
 	if item, ok := m.clientMap[id]; ok {
 		for _, topic := range item.topicMap {
-			title := topic.Title()
-			if topic.IsMatch() {
-				if matchTopic, matchOk := m.matchMap[title]; matchOk {
-					matchTopic.RemoveClient(id)
-				}
-			} else {
-				if plainTopic, plainOk := m.plainMap[title]; plainOk {
-					plainTopic.RemoveClient(id)
+			length := topic.RemoveClient(id)
+			if length == 0 {
+				title := topic.Title()
+				if topic.IsMatch() {
+					delete(m.matchMap, title)
+				} else {
+					delete(m.plainMap, title)
 				}
 			}
 		}
@@ -350,12 +351,6 @@ func (m *defaultTopicManager) doNewTopicOnce(id ClientId, newTopic TopicInterfac
 			newTopic.AddClient(id)
 			m.matchMap[title] = newTopic
 			resTopic = newTopic
-			//// 如果是通配的topic,校验所有普通topic,
-			//for plainTitle, plainTopic := range m.plainMap {
-			//	if resTopic.MatchTitle(plainTitle) {
-			//		plainTopic.AddClient(id)
-			//	}
-			//}
 		}
 	} else {
 		if t, ok := m.plainMap[title]; ok {
@@ -366,14 +361,6 @@ func (m *defaultTopicManager) doNewTopicOnce(id ClientId, newTopic TopicInterfac
 			newTopic.AddClient(id)
 			m.plainMap[title] = newTopic
 			resTopic = newTopic
-			//// 如果不是通配的topic,校验所有通配,如果匹配,加入通配的topic的clientId
-			//for _, matchTopic := range m.matchMap {
-			//	if matchTopic.MatchTitle(title) {
-			//		for clientId, _ := range matchTopic.GetClients() {
-			//			resTopic.AddClient(clientId)
-			//		}
-			//	}
-			//}
 		}
 	}
 	return resTopic, isAdd
