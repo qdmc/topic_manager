@@ -26,11 +26,18 @@ type TopicManagerInterface interface {
 	ClientSubscribe(id ClientId, titles []string, levels ...SubscribeLevel) []SubscribeResultItem // 客户端订阅
 	ClientUnSubscribe(id ClientId, titles []string) ([]UnSubscribeResultItem, error)              // 客户端取消订阅
 	ClientUnSubscribeAll(id ClientId)                                                             // 客户端取消所有订阅
-	GetClientSubscribe(id ClientId, start, end int) (int, []TopicInterface)                       // 客户端订阅列表
+	GetClientSubscribe(id ClientId, start, end int) (int, []SubscribeItem, error)                 // 客户端订阅列表
 	GetPublishClientIds(title string, isCheckTopicExists ...bool) (map[ClientId]struct{}, error)  // 消息发布受众列表,isCheckTopicExists:是否校验topic是否存在
 	GetPlainTopics(start, end int) (int, []TopicInterface)                                        // 普通topic列表
 	GetMatchTopics(start, end int) (int, []TopicInterface)                                        // 匹配topic列表
-	SetSubscribeHandle(SubscribeHandle)
+	SetSubscribeHandle(SubscribeHandle)                                                           // 配置一个校验订阅的Handle
+	GetOnceTopicSubscribes(title string, start, end int) (int, []SubscribeItem, error)            // 获取一个topic的订阅列表
+}
+
+type SubscribeItem struct {
+	Id       ClientId
+	Title    string
+	TimeNano int64
 }
 
 type clientItem struct {
@@ -59,6 +66,8 @@ type defaultTopicManager struct {
 }
 
 func (m *defaultTopicManager) SetSubscribeHandle(h SubscribeHandle) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if h != nil {
 		m.handle = h
 	}
@@ -171,28 +180,37 @@ func (m *defaultTopicManager) ClientUnSubscribeAll(id ClientId) {
 	}
 }
 
-func (m *defaultTopicManager) GetClientSubscribe(id ClientId, start, end int) (int, []TopicInterface) {
+func (m *defaultTopicManager) GetClientSubscribe(id ClientId, start, end int) (int, []SubscribeItem, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	var topics Topics
+	var subscribes subs
 	var length int
 	if client, ok := m.clientMap[id]; ok {
 		length = len(client.topicMap)
-		if length > 0 {
-			for _, topic := range client.topicMap {
-				topics = append(topics, topic)
-				sort.Sort(topics)
-				var list []TopicInterface
-				for index, t := range topics {
-					if index >= start && index < end {
-						list = append(list, t)
-					}
-				}
-				return length, list
-			}
+		if length < 1 {
+			return length, subscribes, nil
 		}
+		for _, topic := range client.topicMap {
+			item := SubscribeItem{
+				Id:       id,
+				Title:    topic.Title(),
+				TimeNano: 0,
+			}
+			if t, topicOk := topic.GetClients()[id]; topicOk {
+				item.TimeNano = t
+			}
+			subscribes = append(subscribes, item)
+			var list []SubscribeItem
+			for index, item := range subscribes {
+				if index >= start && index < end {
+					list = append(list, item)
+				}
+			}
+			return length, list, nil
+		}
+		sort.Sort(subscribes)
 	}
-	return length, topics
+	return length, subscribes, errors.New(fmt.Sprintf("not found subscribes with client(%d)", id))
 }
 
 func (m *defaultTopicManager) GetPublishClientIds(publishTitle string, isCheckTopicExists ...bool) (map[ClientId]struct{}, error) {
@@ -208,7 +226,9 @@ func (m *defaultTopicManager) GetPublishClientIds(publishTitle string, isCheckTo
 		return nil, errors.New(fmt.Sprintf("topic(%s) error: %s", publishTitle, err.Error()))
 	}
 	if topic, ok := m.plainMap[title]; ok {
-		resMap = topic.GetClients()
+		for id, _ := range topic.GetClients() {
+			resMap[id] = struct{}{}
+		}
 	} else {
 		if isCheckExist {
 			return nil, errors.New(fmt.Sprintf("topic(%s) is not exist", publishTitle))
@@ -267,7 +287,43 @@ func (m *defaultTopicManager) GetMatchTopics(start, end int) (int, []TopicInterf
 	}
 	return length, topics
 }
-
+func (m *defaultTopicManager) GetOnceTopicSubscribes(title string, start, end int) (int, []SubscribeItem, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var subscribes subs
+	var topic TopicInterface
+	var length int
+	if plain, plainOk := m.plainMap[title]; plainOk {
+		topic = plain
+	} else {
+		if match, matchOk := m.matchMap[title]; matchOk {
+			topic = match
+		} else {
+			return length, subscribes, errors.New(fmt.Sprintf("not found topic with(%s)", title))
+		}
+	}
+	ids := topic.GetClients()
+	topicTitle := topic.Title()
+	length = len(ids)
+	if length > 0 {
+		var list []SubscribeItem
+		for id, t := range ids {
+			subscribes = append(subscribes, SubscribeItem{
+				Id:       id,
+				Title:    topicTitle,
+				TimeNano: t,
+			})
+		}
+		sort.Sort(subscribes)
+		for index, item := range subscribes {
+			if index >= start && index < end {
+				list = append(list, item)
+			}
+		}
+		return length, list, nil
+	}
+	return length, subscribes, nil
+}
 func (m *defaultTopicManager) doNewTopicOnce(id ClientId, newTopic TopicInterface) (TopicInterface, bool) {
 	var resTopic TopicInterface
 	var isAdd bool
@@ -308,4 +364,18 @@ func (m *defaultTopicManager) doNewTopicOnce(id ClientId, newTopic TopicInterfac
 		}
 	}
 	return resTopic, isAdd
+}
+
+type subs []SubscribeItem
+
+func (s subs) Len() int {
+	return len(s)
+}
+
+func (s subs) Less(i, j int) bool {
+	return s[i].Id > s[j].Id
+}
+
+func (s subs) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
 }
