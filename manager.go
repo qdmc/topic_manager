@@ -290,9 +290,13 @@ func (m *defaultTopicManager) GetMatchTopics(start, end int) (int, []TopicInterf
 func (m *defaultTopicManager) GetOnceTopicSubscribes(title string, start, end int) (int, []SubscribeItem, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	var subscribes subs
-	var topic TopicInterface
 	var length int
+	var subscribes subs
+	title, err := checkPublishTopicTitle(title)
+	if err != nil {
+		return length, subscribes, err
+	}
+	var topic TopicInterface
 	if plain, plainOk := m.plainMap[title]; plainOk {
 		topic = plain
 	} else {
