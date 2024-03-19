@@ -30,14 +30,16 @@ type titleFormat struct {
 // checkPublishTopicTitle    校验发布时的topic
 func checkPublishTopicTitle(topicTitle string) (string, error) {
 	var title string
-	if title == "" {
+	if topicTitle == "" {
 		return title, errors.New("topicTitle is empty")
 	}
 	if strings.Index(topicTitle, LayerSeparation) != 0 {
-		title = LayerSeparation + title
+		title = LayerSeparation + topicTitle
+	} else {
+		title = topicTitle
 	}
 	if !titleMatch.MatchString(title) {
-		return title, errors.New("topicTitle is not regexp")
+		return title, errors.New(fmt.Sprintf("topicTitle is not regexp: %s", title))
 	}
 	return title, nil
 }

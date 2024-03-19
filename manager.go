@@ -40,7 +40,7 @@ type SubscribeItem struct {
 	TimeNano int64
 }
 
-type clientItem struct {
+type ClientItem struct {
 	id       ClientId
 	topicMap map[string]TopicInterface
 }
@@ -48,7 +48,7 @@ type clientItem struct {
 func NewTopicManager() TopicManagerInterface {
 	return &defaultTopicManager{
 		mu:        sync.RWMutex{},
-		clientMap: map[ClientId]clientItem{},
+		clientMap: map[ClientId]ClientItem{},
 		plainMap:  map[string]TopicInterface{},
 		matchMap:  map[string]TopicInterface{},
 		handle: func(title string, id ClientId) error {
@@ -59,7 +59,7 @@ func NewTopicManager() TopicManagerInterface {
 
 type defaultTopicManager struct {
 	mu        sync.RWMutex
-	clientMap map[ClientId]clientItem // 客户端map
+	clientMap map[ClientId]ClientItem // 客户端map
 	plainMap  map[string]TopicInterface
 	matchMap  map[string]TopicInterface
 	handle    SubscribeHandle
@@ -117,7 +117,7 @@ func (m *defaultTopicManager) ClientSubscribe(id ClientId, titles []string, leve
 				client.topicMap[title] = topic
 			}
 		} else {
-			client = clientItem{
+			client = ClientItem{
 				id:       id,
 				topicMap: map[string]TopicInterface{},
 			}
@@ -292,10 +292,11 @@ func (m *defaultTopicManager) GetOnceTopicSubscribes(title string, start, end in
 	defer m.mu.RUnlock()
 	var length int
 	var subscribes subs
-	title, err := checkPublishTopicTitle(title)
-	if err != nil {
-		return length, subscribes, err
-	}
+	//title, err := checkPublishTopicTitle(t)
+	//if err != nil {
+	//	fmt.Println("-----  ", title)
+	//	return length, subscribes, err
+	//}
 	var topic TopicInterface
 	if plain, plainOk := m.plainMap[title]; plainOk {
 		topic = plain
