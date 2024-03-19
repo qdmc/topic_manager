@@ -150,7 +150,15 @@ func (m *defaultTopicManager) ClientUnSubscribe(id ClientId, titles []string) ([
 			Title: t,
 			Err:   nil,
 		}
-		if _, itemOk := item.topicMap[t]; itemOk {
+		if topic, itemOk := item.topicMap[t]; itemOk {
+			length := topic.RemoveClient(id)
+			if length == 0 {
+				if topic.IsMatch() {
+					delete(m.matchMap, topic.Title())
+				} else {
+					delete(m.plainMap, topic.Title())
+				}
+			}
 			delete(item.topicMap, t)
 		} else {
 			resItem.Err = errors.New(fmt.Sprintf("client is not subscribe %s", t))
