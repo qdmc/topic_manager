@@ -20,6 +20,7 @@ func Test_subscribe(t *testing.T) {
 	if err != nil {
 		t.Fatal("err: ", err.Error())
 	}
+	fmt.Println("clientLen: ", manager.GetClientLen())
 	fmt.Println("client.Length: ", length)
 	ut := end - start
 	fmt.Println(ut, "   ", time.Unix(0, ut))
@@ -35,10 +36,25 @@ func Test_subscribe(t *testing.T) {
 	fmt.Println(ut1, "   ", time.Unix(0, ut1))
 	i, _ := manager.GetMatchTopics(0, 3)
 	fmt.Println("matchTopicLen: ", i)
-}
-
-func Test_unSubscribe(t *testing.T) {
-
+	fmt.Println("################################")
+	client := clients[2]
+	manager.ClientUnSubscribeAll(client.id)
+	start = time.Now().UnixNano()
+	m, err = manager.GetPublishClientIds("/test/01")
+	end = time.Now().UnixNano()
+	if err != nil {
+		t.Fatal("GetPublishClientIds.err: ", err.Error())
+	}
+	ut = end1 - start1
+	fmt.Println("PublishClientIds.len: ", len(m))
+	fmt.Println(ut1, "   ", time.Unix(0, ut))
+	fmt.Println("clientLen: ", manager.GetClientLen())
+	res, err := manager.ClientUnSubscribe(clients[5].id, clients[5].topics)
+	if err != nil {
+		t.Fatal("ClientUnSubscribe.err: ", err.Error())
+	}
+	fmt.Println("unSubscribeLen: ", len(res))
+	fmt.Println("clientLen: ", manager.GetClientLen())
 }
 
 type testClient struct {

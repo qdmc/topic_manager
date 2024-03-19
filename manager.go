@@ -35,6 +35,7 @@ type TopicManagerInterface interface {
 	GetMatchTopics(start, end int) (int, []TopicInterface)                                        // 匹配topic列表
 	SetSubscribeHandle(SubscribeHandle)                                                           // 配置一个校验订阅的Handle
 	GetOnceTopicSubscribes(title string, start, end int) (int, []SubscribeItem, error)            // 获取一个topic的订阅列表
+	GetClientLen() int
 }
 
 // SubscribeItem   订阅列表单项
@@ -70,6 +71,9 @@ type defaultTopicManager struct {
 	handle    SubscribeHandle
 }
 
+func (m *defaultTopicManager) GetClientLen() int {
+	return len(m.clientMap)
+}
 func (m *defaultTopicManager) SetSubscribeHandle(h SubscribeHandle) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -170,7 +174,7 @@ func (m *defaultTopicManager) ClientUnSubscribe(id ClientId, titles []string) ([
 		list = append(list, resItem)
 	}
 	if len(item.topicMap) == 0 {
-
+		delete(m.clientMap, id)
 	}
 	return list, nil
 }
